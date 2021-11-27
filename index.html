@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+    body {
+        background-color: lightgray;
+    }
+
+    /*
+     * so that button don't affect canvas sizing
+     */
+    #pickingToggle {
+        position: absolute;
+        z-index: 100;
+    }
+</style>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec4 vPosition;
+attribute vec4 vNormals;
+attribute vec2 vTexCoord;
+
+varying vec4 var_vPosition;
+varying vec4 var_vNormals;
+varying vec2 fTexCoord;
+
+uniform mat4 translationMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+void main()
+{
+    // gl will remove unused variables
+    // since we refer them from js we make fake use of it
+    gl_Position = vec4(vTexCoord.xy, 0.0, 1.0);
+
+    var_vPosition = translationMatrix * vPosition;
+    var_vNormals = vNormals;
+    gl_Position = projectionMatrix * modelViewMatrix * translationMatrix * vPosition;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+
+varying vec4 var_vPosition;
+varying vec4 var_vNormals;
+varying vec2 fTexCoord;
+
+uniform sampler2D Tex0;
+uniform vec4 sColor;
+uniform int picking;
+
+float shininess = 20.0;
+
+void main()
+{
+    if(picking == 1) {
+      gl_FragColor = sColor;
+      return;
+    }
+    vec3 lightSource = vec3(0.0, 50.0, 0.0);
+    vec4 color = texture2D(Tex0, fTexCoord);
+
+    vec3 specularProduct = vec3(0.4, 0.4, 0.4);
+
+    vec3 L = normalize(lightSource - var_vPosition.xyz);
+    vec3 E = normalize(-var_vPosition.xyz);
+    vec3 H = normalize(L + E);
+
+    vec3 N = normalize(var_vNormals.xyz);
+
+    vec3 ambient = vec3(0.1, 0.1, 0.0);
+    vec3 diffuse = color.xyz * max(dot(L, N), 0.0);
+    vec3 specular = specularProduct * pow(max(dot(N, H), 0.0), shininess);
+
+    float light = dot(N, lightSource);
+    gl_FragColor.rgb = (ambient + diffuse + specular);
+    gl_FragColor.a = 1.0;
+}
+</script>
+
+<script type="text/javascript" src="lib/webgl-debug.js"></script>
+<script type="text/javascript" src="Common/webgl-utils.js"></script>
+<script type="text/javascript" src="Common/initShaders.js"></script>
+<script type="text/javascript" src="Common/MV.js"></script>
+<script type="text/javascript" src="util/objLoader.js"></script>
+<script type="text/javascript" src="util/loadObj.js"></script>
+<script type="text/javascript" src="Resource.js"></script>
+<script type="text/javascript" src="Game.js"></script>
+<script type="text/javascript" src="Object3D.js"></script>
+<script type="text/javascript" src="index.js"></script>
+
+<body>
+<button id= "pickingToggle">PICKING VIEW TOGGLE</button>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+
+<img id = "blackTex" src = "assets/wood.png" hidden></img>
+<img id = "whiteTex" src = "assets/worldmap_512x256.png" hidden></img>
+</body>
+</html>
